@@ -225,7 +225,13 @@ private fun showDatePicker(
     DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
-            calendar.set(year, month, dayOfMonth)
+            calendar.set(Calendar.YEAR, year)
+            calendar.set(Calendar.MONTH, month)
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
             onDateSelected(calendar.timeInMillis)
         },
         calendar.get(Calendar.YEAR),

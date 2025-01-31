@@ -27,12 +27,19 @@ fun HistoryScreen(
 ) {
     var selectedWorker by remember { mutableStateOf<Worker?>(null) }
     var showWorkerDialog by remember { mutableStateOf(false) }
-    var startDate by remember { mutableStateOf(System.currentTimeMillis()) }
+    var startDate by remember { mutableStateOf(
+        Calendar.getInstance().apply {
+            add(Calendar.MONTH, -1) // 默认显示最近一个月的记录
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+        }.timeInMillis
+    )}
     var endDate by remember { mutableStateOf(System.currentTimeMillis()) }
     val records by viewModel.records.collectAsState()
     val workers by viewModel.workers.collectAsState()
     val context = LocalContext.current
-    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.CHINESE) }
 
     LaunchedEffect(selectedWorker, startDate, endDate) {
         viewModel.loadRecords(selectedWorker?.id, startDate, endDate)
@@ -58,57 +65,91 @@ fun HistoryScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 筛选条件
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Card(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedButton(
-                    onClick = { showWorkerDialog = true },
-                    modifier = Modifier.weight(1f)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(selectedWorker?.name ?: "选择工人")
-                }
-                if (selectedWorker != null) {
-                    IconButton(onClick = { selectedWorker = null }) {
-                        Icon(Icons.Default.Clear, contentDescription = "清除选择")
+                    // 工人选择
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { showWorkerDialog = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(selectedWorker?.name ?: "选择工人")
+                        }
+                        if (selectedWorker != null) {
+                            IconButton(onClick = { selectedWorker = null }) {
+                                Icon(Icons.Default.Clear, contentDescription = "清除选择")
+                            }
+                        }
+                    }
+
+                    // 日期范围选择
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        OutlinedTextField(
+                            value = dateFormatter.format(Date(startDate)),
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("开始日期") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp),
+                            trailingIcon = {
+                                Icon(Icons.Default.DateRange, contentDescription = "选择开始日期")
+                            }
+                        )
+                        OutlinedTextField(
+                            value = dateFormatter.format(Date(endDate)),
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("结束日期") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp),
+                            trailingIcon = {
+                                Icon(Icons.Default.DateRange, contentDescription = "选择结束日期")
+                            }
+                        )
                     }
                 }
             }
 
-            // 日期选择
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            // 记录统计
+            Card(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedTextField(
-                    value = dateFormatter.format(Date(startDate)),
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("开始日期") },
+                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                        .clickable {
-                            showDatePicker(context, startDate) { date ->
-                                startDate = date
-                            }
-                        }
-                )
-                OutlinedTextField(
-                    value = dateFormatter.format(Date(endDate)),
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("结束日期") },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 8.dp)
-                        .clickable {
-                            showDatePicker(context, endDate) { date ->
-                                endDate = date
-                            }
-                        }
-                )
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "记录统计",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "总记录数: ${records.size}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "总金额: ¥${String.format("%.2f", records.sumOf { it.amount })}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
             // 记录列表
@@ -126,6 +167,7 @@ fun HistoryScreen(
             }
         }
 
+        // 工人选择对话框
         if (showWorkerDialog) {
             AlertDialog(
                 onDismissRequest = { showWorkerDialog = false },
@@ -225,7 +267,13 @@ private fun showDatePicker(
     DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
-            calendar.set(year, month, dayOfMonth)
+            calendar.set(Calendar.YEAR, year)
+            calendar.set(Calendar.MONTH, month)
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
             onDateSelected(calendar.timeInMillis)
         },
         calendar.get(Calendar.YEAR),

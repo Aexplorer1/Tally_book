@@ -18,6 +18,7 @@ import com.mushroom.worklog.model.Worker
 import com.mushroom.worklog.viewmodel.WorkRecordViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import android.content.DialogInterface
 
 @Composable
 fun AddRecordScreen(
@@ -105,28 +106,37 @@ fun AddRecordScreen(
             }
 
             // 选择日期
-            OutlinedTextField(
-                value = dateFormatter.format(Date(selectedDate)),
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("选择日期") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        val calendar = Calendar.getInstance()
-                        calendar.timeInMillis = selectedDate
-                        DatePickerDialog(
-                            context,
-                            { _, year, month, dayOfMonth ->
-                                calendar.set(year, month, dayOfMonth)
-                                selectedDate = calendar.timeInMillis
-                            },
-                            calendar.get(Calendar.YEAR),
-                            calendar.get(Calendar.MONTH),
-                            calendar.get(Calendar.DAY_OF_MONTH)
-                        ).show()
-                    }
-            )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = dateFormatter.format(Date(selectedDate)),
+                    onValueChange = { },
+                    readOnly = true,
+                    label = { Text("选择日期") },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            showChineseDatePicker(context, selectedDate) { date ->
+                                selectedDate = date
+                            }
+                        }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "选择日期")
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                )
+                // 添加一个透明的可点击层
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable(
+                            onClick = {
+                                showChineseDatePicker(context, selectedDate) { date ->
+                                    selectedDate = date
+                                }
+                            }
+                        )
+                )
+            }
 
             // 工作类型
             OutlinedTextField(
@@ -194,6 +204,44 @@ fun AddRecordScreen(
                 Text("保存")
             }
         }
+    }
+}
+
+private fun showChineseDatePicker(
+    context: android.content.Context,
+    initialDate: Long,
+    onDateSelected: (Long) -> Unit
+) {
+    val calendar = Calendar.getInstance(Locale.CHINESE).apply {
+        timeInMillis = initialDate
+    }
+
+    val datePickerDialog = DatePickerDialog(
+        context,
+        android.R.style.Theme_DeviceDefault_Light_Dialog,  // 使用系统亮色主题
+        { _, year, month, dayOfMonth ->
+            calendar.set(Calendar.YEAR, year)
+            calendar.set(Calendar.MONTH, month)
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            onDateSelected(calendar.timeInMillis)
+        },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    ).apply {
+        // 设置中文按钮文字
+        setButton(DialogInterface.BUTTON_POSITIVE, "确定", this)
+        setButton(DialogInterface.BUTTON_NEGATIVE, "取消", this)
+    }
+
+    try {
+        datePickerDialog.show()
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }
 
