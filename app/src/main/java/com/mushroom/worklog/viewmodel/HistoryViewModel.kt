@@ -28,24 +28,28 @@ class HistoryViewModel @Inject constructor(
 
     private fun loadWorkers() {
         viewModelScope.launch {
-            workerDao.getAllWorkers()
-                .collect { workers ->
-                    _workers.value = workers
-                }
+            try {
+                workerDao.getAllWorkers()
+                    .catch { emit(emptyList()) }
+                    .collect { workers ->
+                        _workers.value = workers
+                    }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun loadRecords(workerId: Long?, startDate: Long, endDate: Long) {
         viewModelScope.launch {
-            val records = if (workerId != null) {
-                workRecordDao.getWorkerRecords(workerId)
-            } else {
-                workRecordDao.getRecordsByDateRange(startDate, endDate)
-            }
-            records.collect { recordList ->
-                _records.value = recordList.filter { record ->
-                    record.date in startDate..endDate
-                }.sortedByDescending { it.date }
+            try {
+                workRecordDao.getRecordsByDateRange(workerId, startDate, endDate)
+                    .catch { emit(emptyList()) }
+                    .collect { records ->
+                        _records.value = records.sortedByDescending { it.date }
+                    }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

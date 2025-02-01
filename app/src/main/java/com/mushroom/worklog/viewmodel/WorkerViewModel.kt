@@ -61,14 +61,14 @@ class WorkerViewModel @Inject constructor(
         }
     }
 
-    fun deleteWorker(worker: Worker) {
+    fun updateWorker(worker: Worker) {
         viewModelScope.launch {
             try {
-                workerDao.deleteWorker(worker)
+                workerDao.updateWorker(worker)
                 _uiState.value = UiState.Success
             } catch (e: Exception) {
-                Log.e("WorkerViewModel", "Error deleting worker", e)
-                _uiState.value = UiState.Error(e.message ?: "删除工人失败")
+                Log.e("WorkerViewModel", "Error updating worker", e)
+                _uiState.value = UiState.Error(e.message ?: "更新工人信息失败")
             }
         }
     }

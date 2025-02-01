@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,65 +19,95 @@ import com.mushroom.worklog.model.Worker
 import com.mushroom.worklog.viewmodel.WorkerViewModel
 
 @Composable
-fun WorkersScreen(
-    viewModel: WorkerViewModel = hiltViewModel()
+fun WorkerCard(
+    worker: Worker,
+    onEditClick: () -> Unit
 ) {
-    val workers by viewModel.workers.collectAsState()
-    val uiState by viewModel.uiState.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
-    var showError by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(uiState) {
-        when (uiState) {
-            is WorkerViewModel.UiState.Error -> {
-                showError = (uiState as WorkerViewModel.UiState.Error).message
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = worker.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (worker.phoneNumber.isNotBlank()) {
+                    Text(
+                        text = worker.phoneNumber,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
-            is WorkerViewModel.UiState.Success -> {
-                showError = null
+            IconButton(onClick = onEditClick) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "编辑"
+                )
             }
         }
     }
+}
+
+@Composable
+fun WorkersScreen(
+    viewModel: WorkerViewModel = hiltViewModel()
+) {
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingWorker by remember { mutableStateOf<Worker?>(null) }
+    val workers by viewModel.workers.collectAsState()
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("增加工人") }
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "添加工人")
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(workers) { worker ->
-                    WorkerCard(
-                        worker = worker,
-                        onDelete = { viewModel.deleteWorker(worker) }
-                    )
-                }
-            }
-
-            showError?.let { error ->
-                Snackbar(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .align(Alignment.BottomCenter)
-                ) {
-                    Text(error)
-                }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(workers) { worker ->
+                WorkerCard(
+                    worker = worker,
+                    onEditClick = { editingWorker = worker }
+                )
             }
         }
 
-        if (showAddDialog) {
-            AddWorkerDialog(
-                onDismiss = { showAddDialog = false },
-                onConfirm = { name, phone ->
-                    viewModel.addWorker(name, phone)
+        if (showAddDialog || editingWorker != null) {
+            WorkerDialog(
+                worker = editingWorker,
+                onDismiss = {
                     showAddDialog = false
+                    editingWorker = null
+                },
+                onConfirm = { name, phone ->
+                    if (editingWorker != null) {
+                        viewModel.updateWorker(editingWorker!!.copy(
+                            name = name,
+                            phoneNumber = phone
+                        ))
+                    } else {
+                        viewModel.addWorker(name, phone)
+                    }
+                    showAddDialog = false
+                    editingWorker = null
                 }
             )
         }
@@ -84,44 +115,17 @@ fun WorkersScreen(
 }
 
 @Composable
-private fun WorkerCard(
-    worker: Worker,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(text = worker.name, style = MaterialTheme.typography.titleMedium)
-                if (worker.phoneNumber.isNotEmpty()) {
-                    Text(text = worker.phoneNumber, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "删除")
-            }
-        }
-    }
-}
-
-@Composable
-private fun AddWorkerDialog(
+private fun WorkerDialog(
+    worker: Worker?,
     onDismiss: () -> Unit,
     onConfirm: (name: String, phone: String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(worker?.name ?: "") }
+    var phone by remember { mutableStateOf(worker?.phoneNumber ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加工人") },
+        title = { Text(if (worker == null) "添加工人" else "编辑工人") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),

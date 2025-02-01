@@ -1,5 +1,6 @@
 package com.mushroom.worklog.ui.calculation
 
+import android.content.Context
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,21 +21,25 @@ import java.util.*
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.*
 import com.mushroom.worklog.viewmodel.CalculationViewModel
+import com.mushroom.worklog.navigation.Screen
+import androidx.navigation.NavController
 
 @Composable
 fun CalculationScreen(
     viewModel: CalculationViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    navController: NavController
 ) {
-    var startDate by remember { mutableStateOf(System.currentTimeMillis()) }
-    var endDate by remember { mutableStateOf(System.currentTimeMillis()) }
-    val records by viewModel.records.collectAsState()
+    val workerTotals by viewModel.workerTotals.collectAsState()
+    val selectedWorkerRecords by viewModel.selectedWorkerRecords.collectAsState()
+    val startDate by viewModel.startDate.collectAsState()
+    val endDate by viewModel.endDate.collectAsState()
+    var showRecordsDialog by remember { mutableStateOf(false) }
+    var selectedWorker by remember { mutableStateOf<Worker?>(null) }
+    var showSettleDialog by remember { mutableStateOf<Pair<Worker, Double>?>(null) }
+    
     val context = LocalContext.current
-    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-
-    LaunchedEffect(startDate, endDate) {
-        viewModel.setDateRange(startDate, endDate)
-    }
+    val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.CHINESE) }
 
     Scaffold(
         topBar = {
@@ -56,53 +61,193 @@ fun CalculationScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 日期选择
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                OutlinedTextField(
-                    value = dateFormatter.format(Date(startDate)),
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("开始日期") },
+            Card {
+                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                        .clickable {
-                            showDatePicker(context, startDate) { date ->
-                                startDate = date
-                            }
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "选择时间范围",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // 开始日期
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = dateFormatter.format(Date(startDate)),
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("开始日期") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(end = 8.dp),
+                                trailingIcon = {
+                                    Icon(Icons.Default.DateRange, "选择开始日期")
+                                }
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable {
+                                        val calendar = Calendar.getInstance().apply {
+                                            timeInMillis = startDate
+                                        }
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                calendar.set(Calendar.YEAR, year)
+                                                calendar.set(Calendar.MONTH, month)
+                                                calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                                                calendar.set(Calendar.MINUTE, 0)
+                                                calendar.set(Calendar.SECOND, 0)
+                                                calendar.set(Calendar.MILLISECOND, 0)
+                                                viewModel.setDateRange(
+                                                    calendar.timeInMillis,
+                                                    endDate
+                                                )
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                            )
                         }
-                )
-                OutlinedTextField(
-                    value = dateFormatter.format(Date(endDate)),
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("结束日期") },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 8.dp)
-                        .clickable {
-                            showDatePicker(context, endDate) { date ->
-                                endDate = date
-                            }
+
+                        // 结束日期
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = dateFormatter.format(Date(endDate)),
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("结束日期") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 8.dp),
+                                trailingIcon = {
+                                    Icon(Icons.Default.DateRange, "选择结束日期")
+                                }
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable {
+                                        val calendar = Calendar.getInstance().apply {
+                                            timeInMillis = endDate
+                                            set(Calendar.HOUR_OF_DAY, 23)
+                                            set(Calendar.MINUTE, 59)
+                                            set(Calendar.SECOND, 59)
+                                            set(Calendar.MILLISECOND, 999)
+                                        }
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                calendar.set(Calendar.YEAR, year)
+                                                calendar.set(Calendar.MONTH, month)
+                                                calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                                viewModel.setDateRange(
+                                                    startDate,
+                                                    calendar.timeInMillis
+                                                )
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                            )
                         }
-                )
+                    }
+                }
             }
 
-            // 工资列表
+            // 工资统计列表
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(records.entries.toList()) { (worker, workerRecords) ->
+                items(workerTotals.entries.toList()) { (worker, total) ->
                     WorkerSalaryCard(
                         worker = worker,
-                        records = workerRecords,
-                        totalAmount = viewModel.calculateTotal(worker, workerRecords)
+                        total = total,
+                        records = selectedWorkerRecords,
+                        onSettle = {
+                            viewModel.settleWorkerSalary(worker.id)
+                        },
+                        onClick = {
+                            navController.navigate(
+                                Screen.WorkerRecords.createRoute(
+                                    workerId = worker.id,
+                                    startDate = startDate,
+                                    endDate = endDate
+                                )
+                            )
+                        },
+                        onSettleClick = { w, t -> showSettleDialog = w to t }
                     )
                 }
             }
+        }
+
+        // 工作记录详情对话框
+        if (showRecordsDialog && selectedWorker != null) {
+            AlertDialog(
+                onDismissRequest = { showRecordsDialog = false },
+                title = { Text("${selectedWorker?.name}的工作记录") },
+                text = {
+                    LazyColumn {
+                        items(selectedWorkerRecords) { record ->
+                            RecordItem(record = record, dateFormatter = dateFormatter)
+                            Divider()
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showRecordsDialog = false }) {
+                        Text("关闭")
+                    }
+                }
+            )
+        }
+
+        // 添加结算确认对话框
+        showSettleDialog?.let { (worker, total) ->
+            AlertDialog(
+                onDismissRequest = { showSettleDialog = null },
+                title = { Text("确认结算工资") },
+                text = {
+                    Column {
+                        Text("确定要结算 ${worker.name} 的工资吗？")
+                        Text(
+                            text = "结算金额：¥${String.format("%.2f", total)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.settleWorkerSalary(worker.id)
+                            showSettleDialog = null
+                        }
+                    ) {
+                        Text("确认结算")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSettleDialog = null }) {
+                        Text("取消")
+                    }
+                }
+            )
         }
     }
 }
@@ -110,14 +255,16 @@ fun CalculationScreen(
 @Composable
 private fun WorkerSalaryCard(
     worker: Worker,
+    total: Double,
     records: List<WorkRecord>,
-    totalAmount: Double
+    onSettle: () -> Unit,
+    onClick: () -> Unit,
+    onSettleClick: (Worker, Double) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Column(
             modifier = Modifier
@@ -127,37 +274,49 @@ private fun WorkerSalaryCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Column {
                     Text(
                         text = worker.name,
                         style = MaterialTheme.typography.titleMedium
                     )
+                    if (worker.phoneNumber.isNotBlank()) {
+                        Text(
+                            text = worker.phoneNumber,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = "工作记录: ${records.size}条",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "总金额: ¥${String.format("%.2f", totalAmount)}",
-                        style = MaterialTheme.typography.titleSmall,
+                        text = "¥${String.format("%.2f", total)}",
+                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
-                }
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(
-                        if (expanded) Icons.Default.KeyboardArrowUp 
-                        else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (expanded) "收起" else "展开"
-                    )
-                }
-            }
-
-            if (expanded) {
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
-                records.sortedByDescending { it.date }.forEach { record ->
-                    RecordItem(record = record, dateFormatter = dateFormatter)
-                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                    
+                    if (total > 0) {
+                        Text(
+                            text = "未结清",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        TextButton(
+                            onClick = { onSettleClick(worker, total) }
+                        ) {
+                            Text("结算工资")
+                        }
+                    } else {
+                        Text(
+                            text = "已结清",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }
@@ -212,30 +371,4 @@ private fun RecordItem(
             )
         }
     }
-}
-
-private fun showDatePicker(
-    context: android.content.Context,
-    initialDate: Long,
-    onDateSelected: (Long) -> Unit
-) {
-    val calendar = Calendar.getInstance().apply {
-        timeInMillis = initialDate
-    }
-    DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            calendar.set(Calendar.YEAR, year)
-            calendar.set(Calendar.MONTH, month)
-            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            onDateSelected(calendar.timeInMillis)
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    ).show()
 } 

@@ -98,30 +98,87 @@ fun HistoryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        OutlinedTextField(
-                            value = dateFormatter.format(Date(startDate)),
-                            onValueChange = { },
-                            readOnly = true,
-                            label = { Text("开始日期") },
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 8.dp),
-                            trailingIcon = {
-                                Icon(Icons.Default.DateRange, contentDescription = "选择开始日期")
-                            }
-                        )
-                        OutlinedTextField(
-                            value = dateFormatter.format(Date(endDate)),
-                            onValueChange = { },
-                            readOnly = true,
-                            label = { Text("结束日期") },
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(start = 8.dp),
-                            trailingIcon = {
-                                Icon(Icons.Default.DateRange, contentDescription = "选择结束日期")
-                            }
-                        )
+                        // 开始日期
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = dateFormatter.format(Date(startDate)),
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("开始日期") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(end = 8.dp),
+                                trailingIcon = {
+                                    Icon(Icons.Default.DateRange, contentDescription = "选择开始日期")
+                                }
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable {
+                                        val calendar = Calendar.getInstance().apply {
+                                            timeInMillis = startDate
+                                        }
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                calendar.set(Calendar.YEAR, year)
+                                                calendar.set(Calendar.MONTH, month)
+                                                calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                                                calendar.set(Calendar.MINUTE, 0)
+                                                calendar.set(Calendar.SECOND, 0)
+                                                calendar.set(Calendar.MILLISECOND, 0)
+                                                startDate = calendar.timeInMillis
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                            )
+                        }
+
+                        // 结束日期
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = dateFormatter.format(Date(endDate)),
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("结束日期") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 8.dp),
+                                trailingIcon = {
+                                    Icon(Icons.Default.DateRange, contentDescription = "选择结束日期")
+                                }
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable {
+                                        val calendar = Calendar.getInstance().apply {
+                                            timeInMillis = endDate
+                                            set(Calendar.HOUR_OF_DAY, 23)
+                                            set(Calendar.MINUTE, 59)
+                                            set(Calendar.SECOND, 59)
+                                            set(Calendar.MILLISECOND, 999)
+                                        }
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, dayOfMonth ->
+                                                calendar.set(Calendar.YEAR, year)
+                                                calendar.set(Calendar.MONTH, month)
+                                                calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                                endDate = calendar.timeInMillis
+                                            },
+                                            calendar.get(Calendar.YEAR),
+                                            calendar.get(Calendar.MONTH),
+                                            calendar.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                            )
+                        }
                     }
                 }
             }
@@ -213,42 +270,69 @@ private fun RecordCard(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = worker?.name ?: "未知工人",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "¥${String.format("%.2f", record.amount)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // 左侧：工人信息和日期
+                Column {
+                    Text(
+                        text = worker?.name ?: "未知工人",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = dateFormatter.format(Date(record.date)),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                
+                // 右侧：金额和结算状态
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "¥${String.format("%.2f", record.amount)}",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    Text(
+                        text = if (record.isSettled) "已结清" else "未结清",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (record.isSettled) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.error
+                    )
+                }
             }
+
+            // 工作详情
+            Spacer(modifier = Modifier.height(8.dp))
+            
             Text(
-                text = dateFormatter.format(Date(record.date)),
+                text = "工作类型：${record.workType}",
                 style = MaterialTheme.typography.bodyMedium
             )
-            Text(
-                text = "工作类型: ${record.workType}",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            
             if (record.hours > 0) {
                 Text(
-                    text = "工时: ${record.hours}小时",
-                    style = MaterialTheme.typography.bodySmall
+                    text = "工时：${record.hours}小时",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
+            
             if (record.pieces > 0) {
                 Text(
-                    text = "计件: ${record.pieces}件",
-                    style = MaterialTheme.typography.bodySmall
+                    text = "计件：${record.pieces}件",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
+            
             if (record.notes.isNotBlank()) {
                 Text(
-                    text = "备注: ${record.notes}",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "备注：${record.notes}",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary
                 )
             }

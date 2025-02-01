@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "6ecb8c337a0b28d96181726798ebd659",
+    "identityHash": "6ffb65fbf8ae35100d2a86c9ca3bb322",
     "entities": [
       {
         "tableName": "workers",
@@ -38,7 +38,7 @@
       },
       {
         "tableName": "work_records",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `workerId` INTEGER NOT NULL, `date` INTEGER NOT NULL, `workType` TEXT NOT NULL, `hours` REAL NOT NULL, `pieces` INTEGER NOT NULL, `amount` REAL NOT NULL, `notes` TEXT NOT NULL, FOREIGN KEY(`workerId`) REFERENCES `workers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `workerId` INTEGER NOT NULL, `date` INTEGER NOT NULL, `workType` TEXT NOT NULL, `hours` REAL NOT NULL, `pieces` INTEGER NOT NULL, `amount` REAL NOT NULL, `notes` TEXT NOT NULL, `isSettled` INTEGER NOT NULL, FOREIGN KEY(`workerId`) REFERENCES `workers`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -87,6 +87,12 @@
             "columnName": "notes",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "isSettled",
+            "columnName": "isSettled",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -124,7 +130,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6ecb8c337a0b28d96181726798ebd659')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6ffb65fbf8ae35100d2a86c9ca3bb322')"
     ]
   }
 }

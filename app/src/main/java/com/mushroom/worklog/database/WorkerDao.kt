@@ -12,6 +12,9 @@ interface WorkerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWorker(worker: Worker): Long
     
+    @Update
+    suspend fun updateWorker(worker: Worker)
+    
     @Delete
     suspend fun deleteWorker(worker: Worker)
 } 

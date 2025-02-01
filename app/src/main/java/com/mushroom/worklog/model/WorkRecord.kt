@@ -28,5 +28,6 @@ data class WorkRecord(
     val hours: Double,
     val pieces: Int,
     val amount: Double,
-    val notes: String
+    val notes: String,
+    val isSettled: Boolean = false
 ) 
