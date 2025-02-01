@@ -72,8 +72,8 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 筛选条件卡片
             Card(
@@ -85,8 +85,8 @@ fun HistoryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -224,19 +224,13 @@ fun HistoryScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "记录统计",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-
-                    // 总记录统计
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "总记录数：${records.size}",
@@ -250,39 +244,25 @@ fun HistoryScreen(
                         )
                     }
 
-                    Divider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f))
-
-                    // 已结算记录统计
-                    val settledRecords = records.filter { it.isSettled }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        val settledRecords = records.filter { it.isSettled }
                         Text(
-                            text = "已结算：${settledRecords.size}条",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "¥${String.format("%.2f", settledRecords.sumOf { it.amount })}",
+                            text = "已结算：${settledRecords.size}条 (¥${String.format("%.2f", settledRecords.sumOf { it.amount })})",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-
-                    // 未结算记录统计
-                    val unsettledRecords = records.filter { !it.isSettled }
+                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        val unsettledRecords = records.filter { !it.isSettled }
                         Text(
-                            text = "未结算：${unsettledRecords.size}条",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = "¥${String.format("%.2f", unsettledRecords.sumOf { it.amount })}",
+                            text = "未结算：${unsettledRecords.size}条 (¥${String.format("%.2f", unsettledRecords.sumOf { it.amount })})",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -323,7 +303,9 @@ fun HistoryScreen(
             } else {
                 // 记录列表
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(top = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(records) { record ->
