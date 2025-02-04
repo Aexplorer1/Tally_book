@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.content.DialogInterface
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.text.input.ImeAction
 
 @Composable
 fun AddRecordScreen(
@@ -37,6 +38,7 @@ fun AddRecordScreen(
     var amount by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
     val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault()) }
@@ -270,15 +272,23 @@ fun AddRecordScreen(
 
                     OutlinedTextField(
                         value = amount,
-                        onValueChange = { amount = it },
+                        onValueChange = { 
+                            if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                amount = it
+                            }
+                        },
                         label = { Text("金额") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Done
+                        ),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         prefix = { Text("¥") },
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                        )
+                        ),
+                        isError = amount.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) <= 0
                     )
 
                     OutlinedTextField(
@@ -299,26 +309,54 @@ fun AddRecordScreen(
             // 保存按钮
             Button(
                 onClick = {
-                    selectedWorker?.let { worker ->
-                        viewModel.addWorkRecord(
-                            workerId = worker.id,
-                            date = selectedDate,
-                            workType = workType,
-                            hours = hours.toDoubleOrNull() ?: 0.0,
-                            pieces = pieces.toIntOrNull() ?: 0,
-                            amount = amount.toDoubleOrNull() ?: 0.0,
-                            notes = notes
-                        )
-                        onNavigateBack()
+                    val validationResult = viewModel.validateRecord(
+                        workerId = selectedWorker?.id,
+                        workType = workType,
+                        hours = hours,
+                        pieces = pieces,
+                        amount = amount
+                    )
+
+                    when (validationResult) {
+                        is WorkRecordViewModel.ValidationResult.Success -> {
+                            selectedWorker?.let { worker ->
+                                viewModel.addWorkRecord(
+                                    workerId = worker.id,
+                                    date = selectedDate,
+                                    workType = workType,
+                                    hours = hours.toDoubleOrNull() ?: 0.0,
+                                    pieces = pieces.toIntOrNull() ?: 0,
+                                    amount = amount.toDoubleOrNull() ?: 0.0,
+                                    notes = notes
+                                )
+                                onNavigateBack()
+                            }
+                        }
+                        is WorkRecordViewModel.ValidationResult.Error -> {
+                            showError = validationResult.message
+                        }
                     }
                 },
-                enabled = selectedWorker != null && workType.isNotBlank() && amount.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Text("保存记录")
+            }
+
+            // 错误提示
+            if (showError != null) {
+                AlertDialog(
+                    onDismissRequest = { showError = null },
+                    title = { Text("提示") },
+                    text = { Text(showError!!) },
+                    confirmButton = {
+                        TextButton(onClick = { showError = null }) {
+                            Text("确定")
+                        }
+                    }
+                )
             }
         }
     }

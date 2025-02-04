@@ -20,6 +20,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mushroom.worklog.model.Worker
 import com.mushroom.worklog.viewmodel.WorkerViewModel
+import androidx.compose.ui.text.input.ImeAction
 
 @Composable
 fun WorkerCard(
@@ -177,8 +178,7 @@ fun WorkersScreen(
         }
 
         if (showAddDialog || editingWorker != null) {
-            WorkerDialog(
-                worker = editingWorker,
+            AddWorkerDialog(
                 onDismiss = {
                     showAddDialog = false
                     editingWorker = null
@@ -201,52 +201,78 @@ fun WorkersScreen(
 }
 
 @Composable
-private fun WorkerDialog(
-    worker: Worker?,
+private fun AddWorkerDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, phone: String) -> Unit
+    onConfirm: (String, String) -> Unit
 ) {
-    var name by remember { mutableStateOf(worker?.name ?: "") }
-    var phone by remember { mutableStateOf(worker?.phoneNumber ?: "") }
+    var name by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf<String?>(null) }
+    val viewModel: WorkerViewModel = hiltViewModel()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Text(
-                if (worker == null) "添加工人" else "编辑工人",
-                style = MaterialTheme.typography.titleLarge
-            )
-        },
+        title = { Text("添加工人") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("姓名") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Next
+                    )
                 )
-                
+
                 OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
+                    value = phoneNumber,
+                    onValueChange = { 
+                        // 只允许输入数字，且最多11位
+                        if (it.length <= 11 && it.all { char -> char.isDigit() }) {
+                            phoneNumber = it
+                        }
+                    },
                     label = { Text("电话") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Phone,
+                        imeAction = ImeAction.Done
+                    ),
+                    isError = phoneNumber.isNotBlank() && !phoneNumber.matches(Regex("^1[3-9]\\d{9}$")),
+                    supportingText = if (phoneNumber.isNotBlank() && !phoneNumber.matches(Regex("^1[3-9]\\d{9}$"))) {
+                        { Text("请输入正确的11位手机号码") }
+                    } else null
                 )
+
+                if (showError != null) {
+                    Text(
+                        text = showError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         },
         confirmButton = {
-            Button(
-                onClick = { onConfirm(name, phone) },
-                enabled = name.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+            TextButton(
+                onClick = {
+                    val validationResult = viewModel.validateWorker(name, phoneNumber)
+                    when (validationResult) {
+                        is WorkerViewModel.ValidationResult.Success -> {
+                            onConfirm(name, phoneNumber)
+                            onDismiss()
+                        }
+                        is WorkerViewModel.ValidationResult.Error -> {
+                            showError = validationResult.message
+                        }
+                    }
+                }
             ) {
                 Text("确定")
             }

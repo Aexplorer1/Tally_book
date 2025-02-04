@@ -24,6 +24,7 @@ import com.mushroom.worklog.ui.history.HistoryScreen
 import com.mushroom.worklog.ui.workers.WorkersScreen
 import com.mushroom.worklog.ui.records.WorkerRecordsScreen
 import com.mushroom.worklog.ui.settings.SettingsScreen
+import com.mushroom.worklog.ui.statistics.StatisticsScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -52,7 +53,8 @@ fun WorkLogApp() {
                         onNavigateToAddRecord = { navController.navigate(Screen.AddRecord.route) },
                         onNavigateToCalculation = { navController.navigate(Screen.Calculation.route) },
                         onNavigateToHistory = { navController.navigate(Screen.History.route) },
-                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+                        onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                        onNavigateToStatistics = { navController.navigate(Screen.Statistics.route) }
                     )
                 }
                 composable(Screen.Workers.route) {
@@ -94,6 +96,11 @@ fun WorkLogApp() {
                         onNavigateBack = { navController.navigateUp() }
                     )
                 }
+                composable(Screen.Statistics.route) {
+                    StatisticsScreen(
+                        onNavigateBack = { navController.navigateUp() }
+                    )
+                }
             }
         }
     }
@@ -105,7 +112,8 @@ fun HomeScreen(
     onNavigateToAddRecord: () -> Unit,
     onNavigateToCalculation: () -> Unit,
     onNavigateToHistory: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToStatistics: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -254,6 +262,45 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "历史记录",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // 记账统计区域
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clickable(onClick = onNavigateToStatistics),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Icon(
+                        Icons.Default.BarChart,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "记账统计",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

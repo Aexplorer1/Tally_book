@@ -70,4 +70,42 @@ class WorkRecordViewModel @Inject constructor(
         object Success : UiState()
         data class Error(val message: String) : UiState()
     }
+
+    sealed class ValidationResult {
+        object Success : ValidationResult()
+        data class Error(val message: String) : ValidationResult()
+    }
+
+    fun validateRecord(
+        workerId: Long?,
+        workType: String,
+        hours: String,
+        pieces: String,
+        amount: String
+    ): ValidationResult {
+        // 检查是否选择了工人
+        if (workerId == null) {
+            return ValidationResult.Error("请选择工人")
+        }
+
+        // 检查工作类型
+        if (workType.isBlank()) {
+            return ValidationResult.Error("请输入工作类型")
+        }
+
+        // 检查工时和计件数
+        val hoursValue = hours.toDoubleOrNull() ?: 0.0
+        val piecesValue = pieces.toIntOrNull() ?: 0
+        if (hoursValue == 0.0 && piecesValue == 0) {
+            return ValidationResult.Error("请输入工时或计件数量")
+        }
+
+        // 检查金额
+        val amountValue = amount.toDoubleOrNull()
+        if (amountValue == null || amountValue <= 0) {
+            return ValidationResult.Error("请输入有效的工资金额")
+        }
+
+        return ValidationResult.Success
+    }
 } 

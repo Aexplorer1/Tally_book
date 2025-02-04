@@ -11,4 +11,5 @@ sealed class Screen(val route: String) {
             "worker_records/$workerId/$startDate/$endDate"
     }
     object Settings : Screen("settings")
+    object Statistics : Screen("statistics")
 } 

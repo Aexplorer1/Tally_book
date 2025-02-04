@@ -46,7 +46,10 @@ class HistoryViewModel @Inject constructor(
                 workRecordDao.getRecordsByDateRange(workerId, startDate, endDate)
                     .catch { emit(emptyList()) }
                     .collect { records ->
-                        _records.value = records.sortedByDescending { it.date }
+                        _records.value = records.sortedWith(
+                            compareBy<WorkRecord> { it.isSettled }
+                                .thenByDescending { it.date }
+                        )
                     }
             } catch (e: Exception) {
                 e.printStackTrace()
