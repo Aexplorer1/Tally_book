@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -26,6 +26,8 @@ import com.mushroom.worklog.ui.records.WorkerRecordsScreen
 import com.mushroom.worklog.ui.settings.SettingsScreen
 import com.mushroom.worklog.ui.statistics.StatisticsScreen
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -115,6 +117,21 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToStatistics: () -> Unit
 ) {
+    var showDeleteWarning by remember { mutableStateOf(false) }
+    var countDown by remember { mutableStateOf(5) }
+    var isCountingDown by remember { mutableStateOf(false) }
+
+    // 倒计时效果
+    LaunchedEffect(isCountingDown) {
+        if (isCountingDown && countDown > 0) {
+            while (countDown > 0) {
+                delay(1000)
+                countDown--
+            }
+            isCountingDown = false
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -320,7 +337,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .clickable(onClick = onNavigateToSettings),
+                .clickable { showDeleteWarning = true },
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
             )
@@ -353,6 +370,86 @@ fun HomeScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             }
+        }
+    }
+
+    // 危险操作警告对话框
+    if (showDeleteWarning) {
+        AlertDialog(
+            onDismissRequest = { 
+                showDeleteWarning = false
+                countDown = 5
+                isCountingDown = false
+            },
+            icon = {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("危险操作警告") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "您即将进入删除工人界面",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "删除工人将永久删除其所有工作记录！",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    if (countDown > 0) {
+                        Text(
+                            text = "请等待 $countDown 秒...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        LinearProgressIndicator(
+                            progress = countDown / 5f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onNavigateToSettings()
+                        showDeleteWarning = false
+                        countDown = 5
+                        isCountingDown = false
+                    },
+                    enabled = countDown == 0,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("继续")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showDeleteWarning = false
+                        countDown = 5
+                        isCountingDown = false
+                    }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+
+        // 开始倒计时
+        LaunchedEffect(showDeleteWarning) {
+            isCountingDown = true
         }
     }
 } 

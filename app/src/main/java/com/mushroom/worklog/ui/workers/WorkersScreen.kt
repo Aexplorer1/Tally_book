@@ -21,6 +21,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.mushroom.worklog.model.Worker
 import com.mushroom.worklog.viewmodel.WorkerViewModel
 import androidx.compose.ui.text.input.ImeAction
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.accompanist.permissions.rememberPermissionState
+import com.mushroom.worklog.utils.ContactsHelper
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 
 @Composable
 fun WorkerCard(
@@ -105,6 +115,18 @@ fun WorkersScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingWorker by remember { mutableStateOf<Worker?>(null) }
     val workers by viewModel.workers.collectAsState()
+    var showContactsDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val contactsHelper = remember { ContactsHelper(context) }
+    
+    // 权限请求
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            showContactsDialog = true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -122,12 +144,29 @@ fun WorkersScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "添加工人")
+                // 导入通讯录按钮
+                FloatingActionButton(
+                    onClick = {
+                        permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
+                    Icon(Icons.Default.ContactPhone, contentDescription = "从通讯录导入")
+                }
+                
+                // 原有的添加按钮
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "添加工人")
+                }
             }
         }
     ) { padding ->
@@ -197,6 +236,114 @@ fun WorkersScreen(
                 }
             )
         }
+
+        // 通讯录联系人选择对话框
+        if (showContactsDialog) {
+            val contacts = remember { contactsHelper.getContacts() }
+            var searchQuery by remember { mutableStateOf("") }
+            val filteredContacts = remember(searchQuery, contacts) {
+                if (searchQuery.isBlank()) {
+                    contacts
+                } else {
+                    contacts.filter { contact ->
+                        contact.name.contains(searchQuery, ignoreCase = true) ||
+                        contact.phoneNumber.contains(searchQuery)
+                    }
+                }
+            }
+            
+            AlertDialog(
+                onDismissRequest = { showContactsDialog = false },
+                title = { Text("选择联系人") },
+                text = {
+                    Column {
+                        // 搜索框
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            label = { Text("搜索联系人") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "搜索"
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "清除"
+                                        )
+                                    }
+                                }
+                            }
+                        )
+
+                        // 联系人列表
+                        if (filteredContacts.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (searchQuery.isBlank()) "没有联系人" else "未找到匹配的联系人",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                items(filteredContacts) { contact ->
+                                    ListItem(
+                                        headlineContent = { Text(contact.name) },
+                                        supportingContent = { Text(contact.phoneNumber) },
+                                        leadingContent = {
+                                            Surface(
+                                                modifier = Modifier.size(32.dp),
+                                                shape = CircleShape,
+                                                color = MaterialTheme.colorScheme.primaryContainer
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = contact.name.take(1),
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .clickable {
+                                                viewModel.addWorker(contact.name, contact.phoneNumber)
+                                                showContactsDialog = false
+                                            }
+                                            .fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showContactsDialog = false }) {
+                        Text("关闭")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -226,7 +373,11 @@ private fun AddWorkerDialog(
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
                         imeAction = ImeAction.Next
-                    )
+                    ),
+                    isError = name.isBlank(),
+                    supportingText = if (name.isBlank()) {
+                        { Text("请输入工人姓名") }
+                    } else null
                 )
 
                 OutlinedTextField(
@@ -237,7 +388,7 @@ private fun AddWorkerDialog(
                             phoneNumber = it
                         }
                     },
-                    label = { Text("电话") },
+                    label = { Text("电话（选填）") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
@@ -272,7 +423,8 @@ private fun AddWorkerDialog(
                             showError = validationResult.message
                         }
                     }
-                }
+                },
+                enabled = name.isNotBlank()
             ) {
                 Text("确定")
             }

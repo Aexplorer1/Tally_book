@@ -26,6 +26,7 @@ import androidx.navigation.NavController
 import androidx.compose.foundation.shape.CircleShape
 import android.content.DialogInterface
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.mushroom.worklog.utils.SoundHelper
 
 @Composable
 fun CalculationScreen(
@@ -40,6 +41,14 @@ fun CalculationScreen(
     
     val context = LocalContext.current
     val dateFormatter = remember { SimpleDateFormat("yyyy年MM月dd日", Locale.CHINESE) }
+    val soundHelper = remember { SoundHelper(context) }
+    
+    // 在组件销毁时释放音效资源
+    DisposableEffect(Unit) {
+        onDispose {
+            soundHelper.release()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -232,12 +241,12 @@ fun CalculationScreen(
                     ) {
                         Text("确定要结算 ${worker.name} 的工资吗？")
                         Text(
-                            "结算金额：¥${String.format("%.2f", total)}",
+                            text = "¥${String.format("%.2f", total)}",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            "结算后，这些工作记录将被标记为已结算",
+                            text = "结算后，这些工作记录将被标记为已结算",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -247,6 +256,8 @@ fun CalculationScreen(
                     Button(
                         onClick = {
                             viewModel.settleWorkerSalary(worker.id)
+                            // 播放结算音效
+                            soundHelper.playSettleSound()
                             showSettleDialog = null
                         },
                         colors = ButtonDefaults.buttonColors(

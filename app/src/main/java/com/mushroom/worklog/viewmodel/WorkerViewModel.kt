@@ -50,12 +50,8 @@ class WorkerViewModel @Inject constructor(
             return ValidationResult.Error("请输入工人姓名")
         }
 
-        // 检查电话号码格式
-        if (phoneNumber.isBlank()) {
-            return ValidationResult.Error("请输入电话号码")
-        }
-        
-        if (!phoneNumber.matches(Regex("^1[3-9]\\d{9}$"))) {
+        // 检查电话号码格式（如果有输入的话）
+        if (phoneNumber.isNotBlank() && !phoneNumber.matches(Regex("^1[3-9]\\d{9}$"))) {
             return ValidationResult.Error("请输入正确的11位手机号码")
         }
 

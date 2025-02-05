@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mushroom.worklog.model.Worker
 import com.mushroom.worklog.viewmodel.SettingsViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun SettingsScreen(
@@ -22,6 +23,19 @@ fun SettingsScreen(
 ) {
     var showDeleteDialog by remember { mutableStateOf<Worker?>(null) }
     val workers by viewModel.workers.collectAsState()
+    var countDown by remember { mutableStateOf(3) }
+    var isCountingDown by remember { mutableStateOf(false) }
+
+    // 倒计时效果
+    LaunchedEffect(isCountingDown) {
+        if (isCountingDown && countDown > 0) {
+            while (countDown > 0) {
+                delay(1000)
+                countDown--
+            }
+            isCountingDown = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -73,30 +87,81 @@ fun SettingsScreen(
         // 删除确认对话框
         showDeleteDialog?.let { worker ->
             AlertDialog(
-                onDismissRequest = { showDeleteDialog = null },
-                title = { Text("确认删除") },
+                onDismissRequest = { 
+                    showDeleteDialog = null
+                    countDown = 3
+                    isCountingDown = false
+                },
+                icon = {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                title = { Text("危险操作") },
                 text = {
-                    Text("确定要删除工人 ${worker.name} 吗？\n删除后，该工人的所有工作记录也将被删除。")
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "确定要删除工人 ${worker.name} 吗？",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "删除后，该工人的所有工作记录也将被删除！",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        if (countDown > 0) {
+                            Text(
+                                text = "请等待 $countDown 秒...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            LinearProgressIndicator(
+                                progress = countDown / 3f,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             viewModel.deleteWorker(worker)
                             showDeleteDialog = null
-                        }
-                    ) {
-                        Text(
-                            "删除",
-                            color = MaterialTheme.colorScheme.error
+                            countDown = 3
+                            isCountingDown = false
+                        },
+                        enabled = countDown == 0,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
                         )
+                    ) {
+                        Text("删除")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = null }) {
+                    TextButton(
+                        onClick = { 
+                            showDeleteDialog = null
+                            countDown = 3
+                            isCountingDown = false
+                        }
+                    ) {
                         Text("取消")
                     }
                 }
             )
+
+            // 开始倒计时
+            LaunchedEffect(showDeleteDialog) {
+                isCountingDown = true
+            }
         }
     }
 }
